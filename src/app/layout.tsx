@@ -4,7 +4,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
-  title: 'AnonAssist',
+  title: 'FeelFree',
   description: 'Anonymous Mental Health Support Platform',
 };
 

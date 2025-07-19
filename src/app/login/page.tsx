@@ -11,7 +11,7 @@ export default function LoginPage() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <Wind className="h-8 w-8 text-primary" />
           </div>
-          <CardTitle className="text-3xl font-bold">Welcome to AnonAssist</CardTitle>
+          <CardTitle className="text-3xl font-bold">Welcome to FeelFree</CardTitle>
           <CardDescription>A safe space for you to share and heal.</CardDescription>
         </CardHeader>
         <CardContent>
