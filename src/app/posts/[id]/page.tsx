@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useTransition, useActionState, useEffect, useRef } from 'react';
 import { notFound } from 'next/navigation';
 import { posts, users as allUsers } from '@/lib/mock-data';
 import type { Post, Comment as CommentType } from '@/lib/types';
@@ -26,7 +26,7 @@ function CommentCard({ comment }: { comment: CommentType }) {
         toast({ title: 'Thanks for your feedback!' });
         // In a real app, you would re-fetch or optimistically update the UI.
       } else {
-        toast({ title: 'Error', description: result.message, variant: 'destructive' });
+        toast({ title: 'Error', variant: 'destructive' });
       }
     });
   };
@@ -62,6 +62,37 @@ function CommentCard({ comment }: { comment: CommentType }) {
     </Card>
   );
 }
+
+function CommentForm({ postId }: { postId: string }) {
+  const { toast } = useToast();
+  const [state, formAction, isPending] = useActionState(addComment, { success: false, message: '' });
+  const formRef = useRef<HTMLFormElement>(null);
+  
+  useEffect(() => {
+    if (state.message) {
+      toast({
+        title: state.success ? 'Success!' : 'Error',
+        description: state.message,
+        variant: state.success ? 'default' : 'destructive'
+      });
+      if(state.success) {
+        formRef.current?.reset();
+      }
+    }
+  }, [state, toast]);
+
+  return (
+    <form ref={formRef} action={formAction}>
+      <input type="hidden" name="postId" value={postId} />
+      <Textarea name="comment" placeholder="Share your thoughts or offer support..." className="mb-4 min-h-[120px]" required />
+      <Button type="submit" disabled={isPending}>
+        {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        Post Comment
+      </Button>
+    </form>
+  )
+}
+
 
 export default function PostPage({ params }: { params: { id: string } }) {
   const [isAiPending, startAiTransition] = useTransition();
@@ -136,19 +167,7 @@ export default function PostPage({ params }: { params: { id: string } }) {
 
           <div>
             <h3 className="text-xl font-bold mb-4">Leave a comment</h3>
-            <form action={async (formData) => {
-              const result = await addComment(formData);
-              if (result.success) {
-                toast({ title: "Comment added!" });
-                // Optimistic UI update or re-fetch would go here
-              } else {
-                toast({ title: "Error", description: result.message, variant: "destructive" });
-              }
-            }}>
-              <input type="hidden" name="postId" value={post.id} />
-              <Textarea name="comment" placeholder="Share your thoughts or offer support..." className="mb-4 min-h-[120px]" />
-              <Button type="submit">Post Comment</Button>
-            </form>
+            <CommentForm postId={post.id} />
           </div>
         </div>
       </main>

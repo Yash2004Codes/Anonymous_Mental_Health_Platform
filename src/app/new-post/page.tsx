@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useFormState } from 'react-dom';
+import { useState, useActionState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Header } from '@/components/Header';
@@ -18,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 export default function NewPostPage() {
   const router = useRouter();
   const { toast } = useToast();
-  const [initialState, formAction] = useFormState(createPost, { message: '' });
+  const [state, formAction, isPending] = useActionState(createPost, { message: '' });
 
   const [content, setContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -80,11 +79,11 @@ export default function NewPostPage() {
     setSuggestedTags(suggestedTags.filter(t => t !== tag));
   };
 
-  if (initialState.message === 'success') {
+  if (state.message === 'success') {
     toast({ title: 'Post created successfully!' });
     router.push('/');
-  } else if (initialState.message) {
-    toast({ title: 'Error', description: initialState.message, variant: 'destructive' });
+  } else if (state.message) {
+    toast({ title: 'Error', description: state.message, variant: 'destructive' });
   }
 
   return (
@@ -130,8 +129,7 @@ export default function NewPostPage() {
                      ))}
                    </div>
                    <Input 
-                    id="tags"
-                    name="tags"
+                    id="tags-input"
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={handleTagInputKeyDown}
@@ -154,7 +152,8 @@ export default function NewPostPage() {
                 </div>
               </CardContent>
               <CardFooter>
-                <Button type="submit" className="ml-auto">
+                <Button type="submit" className="ml-auto" disabled={isPending}>
+                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Post Anonymously
                 </Button>
               </CardFooter>
