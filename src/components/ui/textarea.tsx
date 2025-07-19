@@ -4,6 +4,15 @@ import {cn} from '@/lib/utils';
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, React.ComponentProps<'textarea'>>(
   ({className, ...props}, ref) => {
+    // This useEffect hook will run on the client side after the component mounts.
+    // It will remove the 'fdprocessedid' attribute if it exists.
+    React.useEffect(() => {
+      const textareaRef = ref as React.RefObject<HTMLTextAreaElement>;
+      if (textareaRef?.current?.hasAttribute('fdprocessedid')) {
+        textareaRef.current.removeAttribute('fdprocessedid');
+      }
+    }, [ref]);
+    
     return (
       <textarea
         className={cn(
