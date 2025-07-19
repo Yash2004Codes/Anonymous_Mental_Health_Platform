@@ -1,6 +1,7 @@
 'use server';
 
 import { aiEmpatheticResponse } from "@/ai/flows/ai-empathetic-response";
+import { moderateContent } from "@/ai/flows/moderate-content";
 
 export async function addComment(formData: FormData) {
   const comment = formData.get('comment') as string;
@@ -8,6 +9,13 @@ export async function addComment(formData: FormData) {
 
   if (!comment || !postId) {
     return { success: false, message: 'Comment cannot be empty.' };
+  }
+
+  // Moderate comment before saving
+  const moderationResult = await moderateContent({ content: comment });
+
+  if (moderationResult.flagged) {
+    return { success: false, message: `This comment cannot be posted. Reason: ${moderationResult.reason}` };
   }
   
   console.log('New comment for post', postId, ':', comment);
