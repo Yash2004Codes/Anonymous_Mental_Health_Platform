@@ -1,17 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PostCard } from '@/components/PostCard';
 import { Header } from '@/components/Header';
-import { posts as allPosts } from '@/lib/mock-data';
+import { getPosts } from '@/lib/mock-db';
 import type { Post } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-
-const allTags = [...new Set(allPosts.flatMap((p) => p.tags))];
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function Home() {
+  const [allPosts, setAllPosts] = useState<Post[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function fetchPosts() {
+      try {
+        const posts = await getPosts();
+        setAllPosts(posts);
+      } catch (error) {
+        console.error("Failed to fetch posts:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchPosts();
+  }, []);
+
+  const allTags = [...new Set(allPosts.flatMap((p) => p.tags))];
 
   const toggleTag = (tag: string) => {
     setSelectedTags((prev) =>
@@ -59,9 +76,23 @@ export default function Home() {
           </Card>
 
           <div className="grid gap-6">
-            {filteredPosts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
+            {isLoading ? (
+                <>
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                    <Skeleton className="h-48 w-full" />
+                </>
+            ) : filteredPosts.length > 0 ? (
+              filteredPosts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))
+            ) : (
+                <Card>
+                    <CardContent className="p-8 text-center text-muted-foreground">
+                        No posts found.
+                    </CardContent>
+                </Card>
+            )}
           </div>
         </div>
       </main>

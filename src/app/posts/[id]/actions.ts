@@ -2,31 +2,27 @@
 
 import { aiEmpatheticResponse } from "@/ai/flows/ai-empathetic-response";
 import { moderateContent } from "@/ai/flows/moderate-content";
-import { revalidatePath } from "next/cache";
+import { addComment as dbAddComment } from "@/lib/mock-db";
 
-export async function addComment(prevState: any, formData: FormData) {
-  const comment = formData.get('comment') as string;
-  const postId = formData.get('postId') as string;
-
+export async function addComment(postId: string, comment: string) {
   if (!comment || !postId) {
     return { success: false, message: 'Comment cannot be empty.' };
   }
 
-  // Moderate comment before saving
   const moderationResult = await moderateContent({ content: comment });
 
   if (moderationResult.flagged) {
     return { success: false, message: `This comment cannot be posted. Reason: ${moderationResult.reason}` };
   }
   
-  console.log('New comment for post', postId, ':', comment);
-  // In a real app, save to DB
-  // For this mock, we can't update the central data store from a server action easily
-  // so we revalidate to trigger a re-render. In a real app, you'd insert the comment
-  // and then revalidate.
-  
-  revalidatePath(`/posts/${postId}`);
-  return { success: true, message: 'Comment posted!' };
+  try {
+    const newComment = await dbAddComment(postId, comment);
+    return { success: true, message: 'Comment posted!', newComment };
+  } catch(error) {
+    console.error(error);
+    const message = error instanceof Error ? error.message : "An unknown error occurred.";
+    return { success: false, message: `Failed to post comment: ${message}`};
+  }
 }
 
 export async function rateComment(commentId: string, rating: 'helpful' | 'notHelpful') {

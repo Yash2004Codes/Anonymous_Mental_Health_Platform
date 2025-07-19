@@ -2,7 +2,7 @@
 
 import { useState, useTransition, useActionState, useEffect, useRef } from 'react';
 import { notFound } from 'next/navigation';
-import { posts, users as allUsers } from '@/lib/mock-data';
+import { getPostById, addComment as dbAddComment } from '@/lib/mock-db';
 import type { Post, Comment as CommentType } from '@/lib/types';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,6 +14,7 @@ import { Separator } from '@/components/ui/separator';
 import { ThumbsUp, ThumbsDown, Sparkles, Flag, Loader2 } from 'lucide-react';
 import { addComment, generateAiComment, rateComment } from './actions';
 import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function CommentCard({ comment }: { comment: CommentType }) {
   const [isPending, startTransition] = useTransition();
@@ -63,28 +64,34 @@ function CommentCard({ comment }: { comment: CommentType }) {
   );
 }
 
-function CommentForm({ postId }: { postId: string }) {
+function CommentForm({ postId, onCommentAdded }: { postId: string, onCommentAdded: (newComment: CommentType) => void }) {
   const { toast } = useToast();
-  const [state, formAction, isPending] = useActionState(addComment, { success: false, message: '' });
   const formRef = useRef<HTMLFormElement>(null);
-  
-  useEffect(() => {
-    if (state.message) {
-      toast({
-        title: state.success ? 'Success!' : 'Error',
-        description: state.message,
-        variant: state.success ? 'default' : 'destructive'
-      });
-      if(state.success) {
-        formRef.current?.reset();
-      }
-    }
-  }, [state, toast]);
+  const [commentText, setCommentText] = useState('');
+  const [isPending, startTransition] = useTransition();
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!commentText.trim()) return;
+
+    startTransition(async () => {
+        const { success, message, newComment } = await addComment(postId, commentText);
+        toast({
+            title: success ? 'Success!' : 'Error',
+            description: message,
+            variant: success ? 'default' : 'destructive'
+        });
+        if (success && newComment) {
+            onCommentAdded(newComment);
+            setCommentText('');
+            formRef.current?.reset();
+        }
+    });
+  };
 
   return (
-    <form ref={formRef} action={formAction}>
-      <input type="hidden" name="postId" value={postId} />
-      <Textarea name="comment" placeholder="Share your thoughts or offer support..." className="mb-4 min-h-[120px]" required />
+    <form ref={formRef} onSubmit={handleSubmit}>
+      <Textarea name="comment" placeholder="Share your thoughts or offer support..." className="mb-4 min-h-[120px]" required value={commentText} onChange={(e) => setCommentText(e.target.value)} />
       <Button type="submit" disabled={isPending}>
         {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         Post Comment
@@ -97,29 +104,59 @@ function CommentForm({ postId }: { postId: string }) {
 export default function PostPage({ params }: { params: { id: string } }) {
   const [isAiPending, startAiTransition] = useTransition();
   const { toast } = useToast();
-  const [post, setPost] = useState<Post | undefined>(posts.find((p) => p.id === params.id));
+  const [post, setPost] = useState<Post | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPost() {
+      try {
+        const fetchedPost = await getPostById(params.id);
+        if (fetchedPost) {
+          setPost(fetchedPost);
+        }
+      } catch (error) {
+        console.error("Failed to fetch post:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    fetchPost();
+  }, [params.id]);
+
 
   const handleGenerateAiResponse = () => {
     if (!post) return;
     startAiTransition(async () => {
       const { aiResponse } = await generateAiComment(post.content);
-      const aiComment: CommentType = {
-        id: `ai-comment-${Date.now()}`,
-        author: allUsers.find(u => u.id === 'user-3')!, // AI Assistant user
-        content: aiResponse,
-        createdAt: 'Just now',
-        helpful: 0,
-        notHelpful: 0,
-        isAI: true,
-      };
-      setPost(prevPost => prevPost ? { ...prevPost, comments: [...prevPost.comments, aiComment] } : undefined);
+      const newComment = await dbAddComment(post.id, aiResponse, true);
+      setPost(prevPost => prevPost ? { ...prevPost, comments: [...prevPost.comments, newComment] } : null);
       toast({ title: "AI Assistant has replied.", description: "A supportive message has been added to the comments." });
     });
   };
 
+  if (isLoading) {
+    return (
+        <div className="flex min-h-screen w-full flex-col">
+          <Header />
+           <main className="flex-1 px-4 py-8 md:px-6 lg:px-8">
+            <div className="container mx-auto max-w-3xl space-y-8">
+                <Skeleton className="h-40 w-full" />
+                <Skeleton className="h-10 w-48" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+            </div>
+           </main>
+        </div>
+    )
+  }
+
   if (!post) {
     notFound();
   }
+  
+  const handleCommentAdded = (newComment: CommentType) => {
+    setPost(prevPost => prevPost ? { ...prevPost, comments: [...prevPost.comments, newComment] } : null);
+  };
 
   return (
     <div className="flex min-h-screen w-full flex-col">
@@ -167,7 +204,7 @@ export default function PostPage({ params }: { params: { id: string } }) {
 
           <div>
             <h3 className="text-xl font-bold mb-4">Leave a comment</h3>
-            <CommentForm postId={post.id} />
+            <CommentForm postId={post.id} onCommentAdded={handleCommentAdded} />
           </div>
         </div>
       </main>
