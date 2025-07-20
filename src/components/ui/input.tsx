@@ -4,15 +4,6 @@ import { cn } from "@/lib/utils"
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
-    // This useEffect hook will run on the client side after the component mounts.
-    // It will remove the 'fdprocessedid' attribute if it exists.
-    React.useEffect(() => {
-      const inputRef = ref as React.RefObject<HTMLInputElement>;
-      if (inputRef?.current?.hasAttribute('fdprocessedid')) {
-        inputRef.current.removeAttribute('fdprocessedid');
-      }
-    }, [ref]);
-    
     return (
       <input
         type={type}

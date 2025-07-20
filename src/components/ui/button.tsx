@@ -44,15 +44,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
     
-    // This useEffect hook will run on the client side after the component mounts.
-    // It will remove the 'fdprocessedid' attribute if it exists.
-    React.useEffect(() => {
-      const buttonRef = ref as React.RefObject<HTMLButtonElement>;
-      if (buttonRef?.current?.hasAttribute('fdprocessedid')) {
-        buttonRef.current.removeAttribute('fdprocessedid');
-      }
-    }, [ref]);
-
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
